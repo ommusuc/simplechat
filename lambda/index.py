@@ -2,28 +2,26 @@
 import json
 import os
 import boto3
-import re  # 正規表現モジュールをインポート
+import re
+import urllib.request  # ★追加
+import urllib.error    # ★追加
 from botocore.exceptions import ClientError
-import urllib.request
 
-
-# Lambda コンテキストからリージョンを抽出する関数
 def extract_region_from_arn(arn):
-    # ARN 形式: arn:aws:lambda:region:account-id:function:function-name
     match = re.search('arn:aws:lambda:([^:]+):', arn)
     if match:
         return match.group(1)
-    return "us-east-1"  # デフォルト値
+    return "us-east-1"
 
-# グローバル変数としてクライアントを初期化（初期値）
 bedrock_client = None
 
-# モデルID
 MODEL_ID = os.environ.get("MODEL_ID", "us.amazon.nova-lite-v1:0")
+
+# 外部APIのエンドポイント（ここにリクエスト送る）
+EXTERNAL_API_URL = "https://hogehoge.example.com/generate"  # ★あなたのAPIエンドポイントに変えてね！
 
 def lambda_handler(event, context):
     try:
-        # コンテキストから実行リージョンを取得し、クライアントを初期化
         global bedrock_client
         if bedrock_client is None:
             region = extract_region_from_arn(context.invoked_function_arn)
@@ -31,32 +29,26 @@ def lambda_handler(event, context):
             print(f"Initialized Bedrock client in region: {region}")
         
         print("Received event:", json.dumps(event))
-        
-        # Cognitoで認証されたユーザー情報を取得
+
         user_info = None
         if 'requestContext' in event and 'authorizer' in event['requestContext']:
             user_info = event['requestContext']['authorizer']['claims']
             print(f"Authenticated user: {user_info.get('email') or user_info.get('cognito:username')}")
         
-        # リクエストボディの解析
         body = json.loads(event['body'])
         message = body['message']
         conversation_history = body.get('conversationHistory', [])
-        
+
         print("Processing message:", message)
         print("Using model:", MODEL_ID)
-        
-        # 会話履歴を使用
+
         messages = conversation_history.copy()
-        
-        # ユーザーメッセージを追加
+
         messages.append({
             "role": "user",
             "content": message
         })
-        
-        # Nova Liteモデル用のリクエストペイロードを構築
-        # 会話履歴を含める
+
         bedrock_messages = []
         for msg in messages:
             if msg["role"] == "user":
@@ -66,11 +58,10 @@ def lambda_handler(event, context):
                 })
             elif msg["role"] == "assistant":
                 bedrock_messages.append({
-                    "role": "assistant", 
+                    "role": "assistant",
                     "content": [{"text": msg["content"]}]
                 })
-        
-        # invoke_model用のリクエストペイロード
+
         request_payload = {
             "messages": bedrock_messages,
             "inferenceConfig": {
@@ -80,61 +71,35 @@ def lambda_handler(event, context):
                 "topP": 0.9
             }
         }
-        
-        print("Calling Bedrock invoke_model API with payload:", json.dumps(request_payload))
-    
-        
-                
-        url = "https://ae8a-35-247-90-127.ngrok-free.app/generate"
-        
-        payload = {
-            "prompt": "こんにちは",
-            "max_new_tokens": 100,
-            "do_sample": True,
-            "temperature": 0.7,
-            "top_p": 0.9
-        }
-        
-        # 辞書をJSON文字列に変換
-        data = json.dumps(payload).encode("utf-8")
-        
-        # リクエストヘッダー
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
-        
-        # リクエスト作成
-        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-        
-        try:
-            with urllib.request.urlopen(req) as response:
-                res_data = response.read()
-                res_json = json.loads(res_data)
-                print("✅ 生成結果:", res_json["generated_text"])
-        except urllib.error.HTTPError as e:
-            print("❌ エラー:", e.code)
-            print(e.read().decode())
-        except urllib.error.URLError as e:
-            print("❌ 接続エラー:", e.reason)
-        # レスポンスを解析
-        response_body = json.loads(response['body'].read())
-        print("Bedrock response:", json.dumps(response_body, default=str))
-        
-        # 応答の検証
+
+        print("Calling External API with payload:", json.dumps(request_payload))
+
+        # ★★ ここを変更 ★★
+        req = urllib.request.Request(
+            EXTERNAL_API_URL,
+            data=json.dumps(request_payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            method="POST"
+        )
+        with urllib.request.urlopen(req) as res:
+            res_data = res.read()
+            response_body = json.loads(res_data)
+
+        print("External API response:", json.dumps(response_body, default=str))
+
         if not response_body.get('output') or not response_body['output'].get('message') or not response_body['output']['message'].get('content'):
             raise Exception("No response content from the model")
-        
-        # アシスタントの応答を取得
+
         assistant_response = response_body['output']['message']['content'][0]['text']
-        
-        # アシスタントの応答を会話履歴に追加
+
         messages.append({
             "role": "assistant",
             "content": assistant_response
         })
-        
-        # 成功レスポンスの返却
+
         return {
             "statusCode": 200,
             "headers": {
@@ -149,10 +114,9 @@ def lambda_handler(event, context):
                 "conversationHistory": messages
             })
         }
-        
+
     except Exception as error:
         print("Error:", str(error))
-        
         return {
             "statusCode": 500,
             "headers": {
