@@ -75,21 +75,34 @@ def lambda_handler(event, context):
         print("Calling External API with payload:", json.dumps(request_payload))
 
         # ★★ ここを変更 ★★
+        try:
+        # リクエスト作成
         req = urllib.request.Request(
             EXTERNAL_API_URL,
-            data=json.dumps(request_payload).encode("utf-8"),
+            data=json.dumps(request_payload).encode('utf-8'),
             headers={
                 "Content-Type": "application/json",
                 "Accept": "application/json"
             },
             method="POST"
         )
+        
+        # リクエスト送信
         with urllib.request.urlopen(req) as res:
             res_data = res.read()
             response_body = json.loads(res_data)
+        
+        # 受け取った内容を使う
+        print("✅ 受け取った応答:", json.dumps(response_body, indent=2, ensure_ascii=False))
+    
+        except urllib.error.HTTPError as e:
+            print("❌ HTTPエラー:", e.code)
+            print(e.read().decode())
+        except urllib.error.URLError as e:
+            print("❌ 接続エラー:", e.reason)
 
-        print("External API response:", json.dumps(response_body, default=str))
-
+        print("Bedrock response:", json.dumps(response_body, default=str))
+        
         if not response_body.get('output') or not response_body['output'].get('message') or not response_body['output']['message'].get('content'):
             raise Exception("No response content from the model")
 
