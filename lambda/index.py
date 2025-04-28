@@ -1,15 +1,11 @@
-# lambda/index.py
-
 import json
 import os
 import urllib.request
 import urllib.error
 import re
 
-
 # 環境変数から外部APIのURLを取得
 EXTERNAL_API_URL = os.environ.get("EXTERNAL_API_URL", "https://f53c-34-16-141-190.ngrok-free.app/generate")
-
 
 # Lambdaコンテキストからリージョンを抽出（未使用だけど一応残す）
 def extract_region_from_arn(arn):
@@ -17,7 +13,6 @@ def extract_region_from_arn(arn):
     if match:
         return match.group(1)
     return "us-east-1"
-
 
 def lambda_handler(event, context):
     try:
@@ -37,11 +32,11 @@ def lambda_handler(event, context):
         print("Processing message:", message)
 
         request_payload = {
-              "prompt": message,
-              "max_new_tokens": 512,
-              "do_sample": True,
-              "temperature": 0.7,
-              "top_p": 0.9
+            "prompt": message,
+            "max_new_tokens": 512,
+            "do_sample": True,
+            "temperature": 0.7,
+            "top_p": 0.9
         }
 
         # 外部APIへのPOSTリクエスト準備
@@ -69,19 +64,21 @@ def lambda_handler(event, context):
             print(f"URL error: {e.reason}")
             raise Exception(f"External API URL error: {e.reason}")
 
-        print("External API response:",response_body['generated_text'].replace("\\n", "\n"))
+        print("External API response:", response_body)
 
         # 外部APIのレスポンスからアシスタントの応答を取得
+        if 'generated_text' not in response_body:
+            raise Exception("Missing 'generated_text' in external API response")
+        
         assistant_response = response_body['generated_text'].replace("\\n", "\n")
-                
-        response_time = response_body['response_time']  
+        response_time = response_body['response_time']
         formatted_time = f'{response_time:.3f}'
+
         if not assistant_response:
             raise Exception("No 'response' field found in external API response")
-            
 
         # 正常レスポンスを返却
-         return {
+        return {
             "statusCode": 200,
             "headers": {
                 "Content-Type": "application/json",
@@ -89,14 +86,14 @@ def lambda_handler(event, context):
                 "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
                 "Access-Control-Allow-Methods": "OPTIONS,POST"
             },
-            "body": {
-              "generated_text": assistant_response,
-              "response_time": formatted_time
-            }
+            "body": json.dumps({
+                "generated_text": assistant_response,
+                "response_time": formatted_time
+            })
         }
-   except Exception as error:
+    except Exception as error:
         print("Error:", str(error))
-        
+
         return {
             "statusCode": 500,
             "headers": {
