@@ -36,15 +36,12 @@ def lambda_handler(event, context):
 
         print("Processing message:", message)
 
-        # 会話履歴にユーザーメッセージを追加
-        messages = conversation_history + [{
-            "role": "user",
-            "content": message
-        }]
-
-        # 外部APIに送信するペイロード作成
-        request_payload = {
-            "messages": messages
+        request_paload = {
+              "prompt": "string",
+              "max_new_tokens": 512,
+              "do_sample": true,
+              "temperature": 0.7,
+              "top_p": 0.9
         }
 
         # 外部APIへのPOSTリクエスト準備
@@ -72,18 +69,13 @@ def lambda_handler(event, context):
             print(f"URL error: {e.reason}")
             raise Exception(f"External API URL error: {e.reason}")
 
-        print("External API response:", json.dumps(response_body))
+        print("External API response:",response_body['generated_text'].replace("\\n", "\n"))
 
         # 外部APIのレスポンスからアシスタントの応答を取得
-        assistant_response = response_body.get('response')
+        assistant_response = response_body['generated_text'].replace("\\n", "\n")
         if not assistant_response:
             raise Exception("No 'response' field found in external API response")
-
-        # 会話履歴にアシスタント応答を追加
-        messages.append({
-            "role": "assistant",
-            "content": assistant_response
-        })
+            
 
         # 正常レスポンスを返却
         return {
