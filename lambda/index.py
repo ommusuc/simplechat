@@ -3,6 +3,7 @@ import os
 import urllib.request
 import urllib.error
 import re
+from botocore.exceptions import ClientError
 
 # 環境変数から外部APIのURLを取得
 EXTERNAL_API_URL = os.environ.get("EXTERNAL_API_URL", "https://f53c-34-16-141-190.ngrok-free.app/generate")
@@ -14,8 +15,18 @@ def extract_region_from_arn(arn):
         return match.group(1)
     return "us-east-1"
 
+# グローバル変数としてクライアントを初期化（初期値）
+bedrock_client = None
+
 def lambda_handler(event, context):
     try:
+        # コンテキストから実行リージョンを取得し、クライアントを初期化
+        global bedrock_client
+        if bedrock_client is None:
+            region = extract_region_from_arn(context.invoked_function_arn)
+            bedrock_client = boto3.client('bedrock-runtime', region_name=region)
+            print(f"Initialized Bedrock client in region: {region}")
+            
         print("Received event:", json.dumps(event))
 
         # ユーザー情報（オプション、今回は使わないけどログだけ）
