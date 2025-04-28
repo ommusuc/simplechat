@@ -87,14 +87,19 @@ def lambda_handler(event, context):
 
     except Exception as e:
         print("Error occurred:", str(e))
-        # エラー時レスポンス
+        # エラーハンドリング
+        error_message = str(e)
+        tb = traceback.format_exc()  # スタックトレースを取得
+        
+        # エラーレスポンスを返す
         return {
-              "detail": [
-                {
-                  "loc": ["string", 0],
-                  "msg": "string",
-                  "type": "string"
-                }
-              ]
-            }
-
+            "body": json.dumps({
+                "detail": [
+                    {
+                        "loc": ["function", 0],  # エラーが発生した場所（仮に"function"）
+                        "msg": f"Error occurred: {error_message}",  # エラーメッセージ
+                        "type": "server_error",  # エラーの種類（サーバーエラー）
+                    }
+                ]
+            })
+        }
