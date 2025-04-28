@@ -81,10 +81,19 @@ def lambda_handler(event, context):
             
 
         # 正常レスポンスを返却
-        return {
-            "generated_text": assistant_response,
-            "response_time": formatted_time}
-
+         return {
+            "statusCode": 200,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+                "Access-Control-Allow-Methods": "OPTIONS,POST"
+            },
+            "body": {
+              "generated_text": assistant_response,
+              "response_time": formatted_time
+            }
+        }
     except Exception as e:
         print("Error occurred:", str(e))
         # エラーハンドリング
