@@ -99,11 +99,11 @@ def lambda_handler(event, context):
                 "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
                 "Access-Control-Allow-Methods": "OPTIONS,POST"
             },
-            "body": {
+            "body": json.dumps({
                 "success": True,
-                "response": assistant_response,
-                "response_time": formatted_time,
-            }
+                "response": assistant_response,  # ←文字列そのまま
+                "response_time": formatted_time
+            }) 
         }
         
     except Exception as error:
