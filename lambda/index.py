@@ -42,7 +42,8 @@ def lambda_handler(event, context):
         conversation_history = body.get('conversationHistory', [])
 
         print("Processing message:", message)
-
+        #今回は直接messageを渡す
+        #generete側のスキーマに合わせる
         request_payload = {
             "prompt": message,
             "max_new_tokens": 512,
@@ -56,7 +57,7 @@ def lambda_handler(event, context):
         headers = {
             'Content-Type': 'application/json'
         }
-        
+        #標準ライブラリを使用
         req = urllib.request.Request(
             url=EXTERNAL_API_URL,
             data=payload_bytes,
@@ -93,6 +94,7 @@ def lambda_handler(event, context):
         # 正常レスポンスを返却
         
         # 成功レスポンスの返却
+        # "body"の部分は各辞書の値は全体でstrではいけないのでjson.dumpsで全体をjson形式のstrにする
         return {
             "statusCode": 200,
             "headers": {
