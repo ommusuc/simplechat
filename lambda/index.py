@@ -2,11 +2,12 @@ import json
 import os
 import urllib.request
 import urllib.error
+import boto3
 import re
 from botocore.exceptions import ClientError
 
 # 環境変数から外部APIのURLを取得
-EXTERNAL_API_URL = os.environ.get("EXTERNAL_API_URL", "https://f53c-34-16-141-190.ngrok-free.app/generate")
+EXTERNAL_API_URL = os.environ.get("EXTERNAL_API_URL", "https://ab08-34-16-198-29.ngrok-free.app/generate")
 
 # Lambdaコンテキストからリージョンを抽出（未使用だけど一応残す）
 def extract_region_from_arn(arn):
@@ -55,6 +56,7 @@ def lambda_handler(event, context):
         headers = {
             'Content-Type': 'application/json'
         }
+        
         req = urllib.request.Request(
             url=EXTERNAL_API_URL,
             data=payload_bytes,
