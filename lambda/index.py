@@ -18,7 +18,7 @@ bedrock_client = None
 MODEL_ID = os.environ.get("MODEL_ID", "us.amazon.nova-lite-v1:0")
 
 # 外部APIのエンドポイント（ここにリクエスト送る）
-EXTERNAL_API_URL = "https://hogehoge.example.com/generate"  # ★あなたのAPIエンドポイントに変えてね！
+EXTERNAL_API_URL = "https://d6d5-34-16-186-141.ngrok-free.app/generate"  # ★あなたのAPIエンドポイントに変えてね！
 
 def lambda_handler(event, context):
     try:
