@@ -37,7 +37,7 @@ def lambda_handler(event, context):
         print("Processing message:", message)
 
         request_paload = {
-              "prompt": "string",
+              "prompt": message,
               "max_new_tokens": 512,
               "do_sample": true,
               "temperature": 0.7,
