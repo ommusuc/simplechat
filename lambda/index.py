@@ -4,6 +4,8 @@ import os
 import boto3
 import re  # 正規表現モジュールをインポート
 from botocore.exceptions import ClientError
+import urllib.request
+import urllib.error
 
 
 # Lambda コンテキストからリージョンを抽出する関数
@@ -19,6 +21,10 @@ bedrock_client = None
 
 # モデルID
 MODEL_ID = os.environ.get("MODEL_ID", "us.amazon.nova-lite-v1:0")
+
+
+# URLとデータ
+url = "https://d6d5-34-16-186-141.ngrok-free.app/generate" 
 
 def lambda_handler(event, context):
     try:
@@ -81,17 +87,37 @@ def lambda_handler(event, context):
         }
         
         print("Calling Bedrock invoke_model API with payload:", json.dumps(request_payload))
+                
+        # JSONに変換してバイト列にエンコード
+        data = json.dumps(request_payload).encode("utf-8")
         
-        # invoke_model APIを呼び出し
-        response = bedrock_client.invoke_model(
-            modelId=MODEL_ID,
-            body=json.dumps(request_payload),
-            contentType="application/json"
+        # ヘッダー
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+        
+        # リクエストオブジェクト作成
+        req = urllib.request.Request(
+            url,
+            data=data,
+            headers=headers,
+            method="POST"
         )
         
-        # レスポンスを解析
-        response_body = json.loads(response['body'].read())
-        print("Bedrock response:", json.dumps(response_body, default=str))
+        # リクエスト送信
+        try:
+            with urllib.request.urlopen(req) as res:
+                res_data = res.read()
+                response_body = json.loads(res_data)
+                clean_text = response_body['generated_text'].replace("\\n", "\n")
+                print("✅ 受信したデータ:", clean_text)
+        except urllib.error.HTTPError as e:
+            print("❌ HTTPエラー:", e.code)
+            print(e.read().decode())
+        except urllib.error.URLError as e:
+            print("❌ 接続エラー:", e.reason)
+        
         
         # 応答の検証
         if not response_body.get('output') or not response_body['output'].get('message') or not response_body['output']['message'].get('content'):
