@@ -36,7 +36,7 @@ def lambda_handler(event, context):
 
         print("Processing message:", message)
 
-        request_paload = {
+        request_payload = {
               "prompt": message,
               "max_new_tokens": 512,
               "do_sample": True,
@@ -73,25 +73,17 @@ def lambda_handler(event, context):
 
         # 外部APIのレスポンスからアシスタントの応答を取得
         assistant_response = response_body['generated_text'].replace("\\n", "\n")
+                
+        response_time = response_body['response_time']  
+        formatted_time = f'{response_time:.3f}'
         if not assistant_response:
             raise Exception("No 'response' field found in external API response")
             
 
         # 正常レスポンスを返却
         return {
-            "statusCode": 200,
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
-                "Access-Control-Allow-Methods": "OPTIONS,POST"
-            },
-            "body": json.dumps({
-                "success": True,
-                "response": assistant_response,
-                "conversationHistory": messages
-            })
-        }
+            "generated_text": assist_response,
+            "response_time": formatted_time}
 
     except Exception as e:
         print("Error occurred:", str(e))
