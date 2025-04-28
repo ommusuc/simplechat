@@ -78,6 +78,8 @@ def lambda_handler(event, context):
             raise Exception("No 'response' field found in external API response")
 
         # 正常レスポンスを返却
+        
+        # 成功レスポンスの返却
         return {
             "statusCode": 200,
             "headers": {
@@ -86,14 +88,16 @@ def lambda_handler(event, context):
                 "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
                 "Access-Control-Allow-Methods": "OPTIONS,POST"
             },
-            "body": json.dumps({
-                "generated_text": assistant_response,
-                "response_time": formatted_time
-            })
+            "body": {
+                "success": True,
+                "response": assistant_response,
+                "response_time": formatted_time,
+            }
         }
+        
     except Exception as error:
         print("Error:", str(error))
-
+        
         return {
             "statusCode": 500,
             "headers": {
