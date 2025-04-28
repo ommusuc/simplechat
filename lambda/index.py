@@ -94,21 +94,19 @@ def lambda_handler(event, context):
               "response_time": formatted_time
             }
         }
-    except Exception as e:
-        print("Error occurred:", str(e))
-        # エラーハンドリング
-        error_message = str(e)
-        tb = traceback.format_exc()  # スタックトレースを取得
+   except Exception as error:
+        print("Error:", str(error))
         
-        # エラーレスポンスを返す
         return {
+            "statusCode": 500,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+                "Access-Control-Allow-Methods": "OPTIONS,POST"
+            },
             "body": json.dumps({
-                "detail": [
-                    {
-                        "loc": ["function", 0],  # エラーが発生した場所（仮に"function"）
-                        "msg": f"Error occurred: {error_message}",  # エラーメッセージ
-                        "type": "server_error",  # エラーの種類（サーバーエラー）
-                    }
-                ]
+                "success": False,
+                "error": str(error)
             })
         }
