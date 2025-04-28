@@ -1,13 +1,10 @@
-# lambda/index.py
 import json
 import os
 import boto3
 import re  # 正規表現モジュールをインポート
+import requests  # HTTPリクエスト用のライブラリ
 from botocore.exceptions import ClientError
-import urllib.request
-import urllib.error
 
-url = "https://d6d5-34-16-186-141.ngrok-free.app/generate"
 
 # Lambda コンテキストからリージョンを抽出する関数
 def extract_region_from_arn(arn):
@@ -22,6 +19,9 @@ bedrock_client = None
 
 # モデルID
 MODEL_ID = os.environ.get("MODEL_ID", "us.amazon.nova-lite-v1:0")
+
+# FastAPIエンドポイントURL
+FASTAPI_URL = "https://d6d5-34-16-186-141.ngrok-free.app/generate"
 
 def lambda_handler(event, context):
     try:
@@ -46,7 +46,6 @@ def lambda_handler(event, context):
         conversation_history = body.get('conversationHistory', [])
         
         print("Processing message:", message)
-        print("Using model:", MODEL_ID)
         
         # 会話履歴を使用
         messages = conversation_history.copy()
@@ -57,74 +56,25 @@ def lambda_handler(event, context):
             "content": message
         })
         
-        # Nova Liteモデル用のリクエストペイロードを構築
-        # 会話履歴を含める
-        bedrock_messages = []
-        for msg in messages:
-            if msg["role"] == "user":
-                bedrock_messages.append({
-                    "role": "user",
-                    "content": [{"text": msg["content"]}]
-                })
-            elif msg["role"] == "assistant":
-                bedrock_messages.append({
-                    "role": "assistant", 
-                    "content": [{"text": msg["content"]}]
-                })
-        
-        # invoke_model用のリクエストペイロード
-        request_payload = {
-            "messages": bedrock_messages,
-            "inferenceConfig": {
-                "maxTokens": 512,
-                "stopSequences": [],
-                "temperature": 0.7,
-                "topP": 0.9
-            }
+        # FastAPIエンドポイントにメッセージを送信
+        payload = {
+            "message": message,
+            "conversationHistory": messages
         }
         
-        print("Calling Bedrock invoke_model API with payload:", json.dumps(request_payload))
-            
-        # JSONに変換してバイト列にエンコード
-        data = json.dumps(request_payload).encode("utf-8")
+        # POSTリクエストをFastAPIエンドポイントに送信
+        print("Calling FastAPI endpoint with payload:", json.dumps(payload))
+        response = requests.post(FASTAPI_URL, json=payload)
         
-        # ヘッダー
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
+        # レスポンスの解析
+        if response.status_code != 200:
+            raise Exception(f"Error from FastAPI: {response.status_code} - {response.text}")
         
-        # リクエストオブジェクト作成
-        req = urllib.request.Request(
-            url,
-            data=data,
-            headers=headers,
-            method="POST"
-        )
-        
-        # リクエスト送信
-        try:
-            with urllib.request.urlopen(req) as res:
-                res_data = res.read()
-                response_body = json.loads(res_data)
-                clean_text = response_body['generated_text'].replace("\\n", "\n")
-                print("✅ 受信したデータ:", clean_text)
-        except urllib.error.HTTPError as e:
-            print("❌ HTTPエラー:", e.code)
-            print(e.read().decode())
-        except urllib.error.URLError as e:
-            print("❌ 接続エラー:", e.reason)
-            
-            # レスポンスを解析
-            response_body = json.loads(response['body'].read())
-            print("Bedrock response:", json.dumps(response_body, default=str))
-            
-            # 応答の検証
-        if not response_body.get('output') or not response_body['output'].get('message') or not response_body['output']['message'].get('content'):
-            raise Exception("No response content from the model")
+        response_data = response.json()
+        print("FastAPI response:", json.dumps(response_data, default=str))
         
         # アシスタントの応答を取得
-        assistant_response = response_body['output']['message']['content'][0]['text']
+        assistant_response = response_data.get('response', '')
         
         # アシスタントの応答を会話履歴に追加
         messages.append({
